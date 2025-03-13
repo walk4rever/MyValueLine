@@ -1,0 +1,196 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ stock.symbol }} - Stock Details{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('index') }}" class="text-decoration-none">
+        <i class="fas fa-arrow-left"></i> Back to Portfolio
+    </a>
+</div>
+
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1>{{ stock.name }} ({{ stock.symbol }})</h1>
+        <p class="text-muted">{{ stock.market }} Market</p>
+    </div>
+    <div class="col-auto">
+        <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to remove this stock?')">
+                <i class="fas fa-trash"></i> Remove from Portfolio
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if stock_data %}
+<div class="row mb-4">
+    <!-- Price card -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Current Price</h5>
+                <h2 class="display-4">
+                    {% if stock_data.current_price %}
+                        ${{ "%.2f"|format(stock_data.current_price) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </h2>
+                
+                {% if stock_data.change_percent %}
+                <p class="{% if stock_data.change_percent > 0 %}text-success{% elif stock_data.change_percent < 0 %}text-danger{% endif %} h5">
+                    {% if stock_data.change_percent > 0 %}+{% endif %}{{ "%.2f"|format(stock_data.change_percent) }}%
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Key stats -->
+    <div class="col-md-8 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Key Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Market Cap</span>
+                            <span class="fw-bold">
+                                {% if stock_data.market_cap %}
+                                    ${{ "%.2f"|format(stock_data.market_cap / 1000000000) }}B
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Volume</span>
+                            <span class="fw-bold">
+                                {% if stock_data.volume %}
+                                    {{ "{:,}".format(stock_data.volume) }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">P/E Ratio</span>
+                            <span class="fw-bold">
+                                {% if stock_data.pe_ratio %}
+                                    {{ "%.2f"|format(stock_data.pe_ratio) }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">EPS</span>
+                            <span class="fw-bold">
+                                {% if stock_data.eps %}
+                                    ${{ "%.2f"|format(stock_data.eps) }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Dividend Yield</span>
+                            <span class="fw-bold">
+                                {% if stock_data.dividend_yield %}
+                                    {{ "%.2f"|format(stock_data.dividend_yield * 100) }}%
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">52 Week Range</span>
+                            <span class="fw-bold">
+                                {% if stock_data['52_week_low'] and stock_data['52_week_high'] %}
+                                    ${{ "%.2f"|format(stock_data['52_week_low']) }} - ${{ "%.2f"|format(stock_data['52_week_high']) }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Chart -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Price Chart</h5>
+    </div>
+    <div class="card-body">
+        <div id="stockChart" style="height: 500px;">
+            {% if not chart_data %}
+                <div class="text-center py-5 text-muted">
+                    <p>Chart data not available</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_data %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            console.log("Chart data available, attempting to render chart");
+            const chartData = {{ chart_data | tojson }};
+            console.log("Chart data parsed successfully");
+            
+            // Log the data for debugging
+            console.log("Chart data length:", chartData.length);
+            
+            try {
+                const parsedData = JSON.parse(chartData);
+                console.log("JSON parsed successfully");
+                console.log("Has data property:", parsedData.hasOwnProperty('data'));
+                console.log("Has layout property:", parsedData.hasOwnProperty('layout'));
+                
+                if (parsedData.data && parsedData.layout) {
+                    console.log("Rendering chart with Plotly");
+                    Plotly.newPlot('stockChart', parsedData.data, parsedData.layout);
+                    console.log("Chart rendered successfully");
+                } else {
+                    console.error("Chart data is missing required properties");
+                    document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Unable to render chart: Invalid data format</p></div>';
+                }
+            } catch (parseError) {
+                console.error("Error parsing chart JSON:", parseError);
+                document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Unable to render chart: JSON parse error</p></div>';
+            }
+        } catch (error) {
+            console.error("Error rendering chart:", error);
+            document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Error rendering chart</p></div>';
+        }
+    });
+</script>
+{% else %}
+<script>
+    console.log("No chart data available");
+    document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Chart data not available</p></div>';
+</script>
+{% endif %}
+{% endblock %}

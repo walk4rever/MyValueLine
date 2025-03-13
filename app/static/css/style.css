@@ -1,0 +1,53 @@
+/* Custom styles for MyValueLine */
+
+/* Value Line inspired dashboard */
+.stock-grid .card {
+    transition: transform 0.2s;
+}
+
+.stock-grid .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Stock price indicators */
+.price-up {
+    color: #28a745;
+}
+
+.price-down {
+    color: #dc3545;
+}
+
+/* Charts */
+.chart-container {
+    min-height: 400px;
+}
+
+/* Custom navbar */
+.navbar-brand {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Dashboard cards */
+.dashboard-card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.dashboard-card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Footer styling */
+footer {
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Add some spacing between elements */
+.spacer-y {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}

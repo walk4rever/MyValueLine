@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>My Stock Portfolio</h1>
+        <p class="text-muted">Manage your personal stock portfolio</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('add_stock') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Stock
+        </a>
+    </div>
+</div>
+
+{% if stocks %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Portfolio Overview</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Name</th>
+                            <th>Market</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Change</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in stocks %}
+                        <tr>
+                            <td><strong>{{ stock.symbol }}</strong></td>
+                            <td>{{ stock.name }}</td>
+                            <td>{{ stock.market }}</td>
+                            <td class="text-end">
+                                {% if stock.current_price %}
+                                    ${{ "%.2f"|format(stock.current_price) }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if stock.change_percent %}
+                                    <span class="{% if stock.change_percent > 0 %}text-success{% elif stock.change_percent < 0 %}text-danger{% endif %}">
+                                        {% if stock.change_percent > 0 %}+{% endif %}{{ "%.2f"|format(stock.change_percent) }}%
+                                    </span>
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('stock_detail', stock_id=stock.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-chart-line"></i> Details
+                                </a>
+                                <form action="{{ url_for('delete_stock', stock_id=stock.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to remove this stock?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body text-center py-5">
+            <h3 class="text-muted">No stocks in your portfolio</h3>
+            <p>Add your first stock to get started!</p>
+            <a href="{{ url_for('add_stock') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Stock
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

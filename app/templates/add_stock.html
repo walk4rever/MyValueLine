@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}Add Stock{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Add Stock to Portfolio</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="stockForm">
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Stock Symbol/Ticker</label>
+                        <input type="text" class="form-control" id="symbol" name="symbol" required placeholder="e.g. AAPL, MSFT, 0700, 600519">
+                        <div class="form-text">Enter the ticker symbol for the stock</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="market" class="form-label">Market</label>
+                        <select class="form-select" id="market" name="market">
+                            <option value="US" selected>US Stock (e.g. AAPL, MSFT)</option>
+                            <option value="HK">Hong Kong Stock (e.g. 0700, 9988)</option>
+                            <option value="CN">China A-Shares (e.g. 600519, 000651)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3 d-grid gap-2">
+                        <button type="button" id="searchBtn" class="btn btn-secondary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                    
+                    <div id="stockPreview" class="alert alert-light border d-none">
+                        <h5 id="stockName"></h5>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <p><strong>Symbol:</strong> <span id="previewSymbol"></span></p>
+                                <p><strong>Price:</strong> $<span id="previewPrice"></span></p>
+                            </div>
+                            <div class="col-sm-6">
+                                <p><strong>Change:</strong> <span id="previewChange"></span></p>
+                                <p><strong>Market Cap:</strong> <span id="previewMarketCap"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle"></i> Add to Portfolio
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Search button click handler
+    $('#searchBtn').click(function() {
+        const symbol = $('#symbol').val().trim();
+        const market = $('#market').val();
+        
+        if (!symbol) {
+            alert('Please enter a stock symbol');
+            return;
+        }
+        
+        // Show loading state
+        $(this).html('<i class="fas fa-spinner fa-spin"></i> Searching...');
+        $(this).prop('disabled', true);
+        
+        // Send AJAX request
+        $.ajax({
+            url: '{{ url_for("search_stock") }}',
+            type: 'POST',
+            data: {
+                symbol: symbol,
+                market: market
+            },
+            success: function(data) {
+                if (data.error) {
+                    alert(data.error);
+                    $('#stockPreview').addClass('d-none');
+                } else {
+                    // Populate preview
+                    $('#stockName').text(data.name || symbol);
+                    $('#previewSymbol').text(symbol + ' (' + market + ')');
+                    $('#previewPrice').text(data.current_price ? data.current_price.toFixed(2) : 'N/A');
+                    
+                    // Format change percentage
+                    const changePercent = data.change_percent;
+                    if (changePercent) {
+                        const changeClass = changePercent > 0 ? 'text-success' : 'text-danger';
+                        const changeSign = changePercent > 0 ? '+' : '';
+                        $('#previewChange').html(`<span class="${changeClass}">${changeSign}${changePercent.toFixed(2)}%</span>`);
+                    } else {
+                        $('#previewChange').text('N/A');
+                    }
+                    
+                    // Format market cap
+                    if (data.market_cap) {
+                        const marketCapInBillions = data.market_cap / 1000000000;
+                        $('#previewMarketCap').text(`$${marketCapInBillions.toFixed(2)}B`);
+                    } else {
+                        $('#previewMarketCap').text('N/A');
+                    }
+                    
+                    // Show preview
+                    $('#stockPreview').removeClass('d-none');
+                }
+            },
+            error: function() {
+                alert('Failed to search for stock. Please try again.');
+            },
+            complete: function() {
+                // Reset button
+                $('#searchBtn').html('<i class="fas fa-search"></i> Search');
+                $('#searchBtn').prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
