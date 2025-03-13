@@ -32,7 +32,13 @@
                 <h5 class="card-title">Current Price</h5>
                 <h2 class="display-4">
                     {% if stock_data.current_price %}
-                        ${{ "%.2f"|format(stock_data.current_price) }}
+                        {% if stock.market == 'HK' %}
+                            HK${{ "%.2f"|format(stock_data.current_price) }}
+                        {% elif stock.market == 'CN' %}
+                            ¥{{ "%.2f"|format(stock_data.current_price) }}
+                        {% else %}
+                            ${{ "%.2f"|format(stock_data.current_price) }}
+                        {% endif %}
                     {% else %}
                         N/A
                     {% endif %}
@@ -60,7 +66,13 @@
                             <span class="text-muted">Market Cap</span>
                             <span class="fw-bold">
                                 {% if stock_data.market_cap %}
-                                    ${{ "%.2f"|format(stock_data.market_cap / 1000000000) }}B
+                                    {% if stock.market == 'HK' %}
+                                        HK${{ "%.2f"|format(stock_data.market_cap / 1000000000) }}B
+                                    {% elif stock.market == 'CN' %}
+                                        ¥{{ "%.2f"|format(stock_data.market_cap / 1000000000) }}B
+                                    {% else %}
+                                        ${{ "%.2f"|format(stock_data.market_cap / 1000000000) }}B
+                                    {% endif %}
                                 {% else %}
                                     --
                                 {% endif %}
@@ -96,7 +108,13 @@
                             <span class="text-muted">EPS</span>
                             <span class="fw-bold">
                                 {% if stock_data.eps %}
-                                    ${{ "%.2f"|format(stock_data.eps) }}
+                                    {% if stock.market == 'HK' %}
+                                        HK${{ "%.2f"|format(stock_data.eps) }}
+                                    {% elif stock.market == 'CN' %}
+                                        ¥{{ "%.2f"|format(stock_data.eps) }}
+                                    {% else %}
+                                        ${{ "%.2f"|format(stock_data.eps) }}
+                                    {% endif %}
                                 {% else %}
                                     --
                                 {% endif %}
@@ -120,7 +138,13 @@
                             <span class="text-muted">52 Week Range</span>
                             <span class="fw-bold">
                                 {% if stock_data['52_week_low'] and stock_data['52_week_high'] %}
-                                    ${{ "%.2f"|format(stock_data['52_week_low']) }} - ${{ "%.2f"|format(stock_data['52_week_high']) }}
+                                    {% if stock.market == 'HK' %}
+                                        HK${{ "%.2f"|format(stock_data['52_week_low']) }} - HK${{ "%.2f"|format(stock_data['52_week_high']) }}
+                                    {% elif stock.market == 'CN' %}
+                                        ¥{{ "%.2f"|format(stock_data['52_week_low']) }} - ¥{{ "%.2f"|format(stock_data['52_week_high']) }}
+                                    {% else %}
+                                        ${{ "%.2f"|format(stock_data['52_week_low']) }} - ${{ "%.2f"|format(stock_data['52_week_high']) }}
+                                    {% endif %}
                                 {% else %}
                                     --
                                 {% endif %}
@@ -137,13 +161,22 @@
 <!-- Chart -->
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-light">
-        <h5 class="mb-0">Price Chart</h5>
+        <h5 class="mb-0">5-Year Price History</h5>
     </div>
     <div class="card-body">
         <div id="stockChart" style="height: 500px;">
             {% if not chart_data %}
                 <div class="text-center py-5 text-muted">
                     <p>Chart data not available</p>
+                </div>
+            {% else %}
+                <div class="mb-3 text-muted small">
+                    <p>This chart shows the actual price history of {{ stock.name }} ({{ stock.symbol }}) over the past 5 years (2019-2024).</p>
+                    <ul>
+                        <li><span style="color: rgb(0, 100, 255); font-weight: bold;">Blue line</span>: {{ stock.symbol }} closing price</li>
+                        <li>Toggle "OHLC" in the legend to view candlestick chart (Open-High-Low-Close)</li>
+                    </ul>
+                    <p class="mt-2"><em>Note: Hover over the chart to see precise price values on specific dates.</em></p>
                 </div>
             {% endif %}
         </div>

@@ -41,7 +41,13 @@
                             <td>{{ stock.market }}</td>
                             <td class="text-end">
                                 {% if stock.current_price %}
-                                    ${{ "%.2f"|format(stock.current_price) }}
+                                    {% if stock.market == 'HK' %}
+                                        HK${{ "%.2f"|format(stock.current_price) }}
+                                    {% elif stock.market == 'CN' %}
+                                        ¥{{ "%.2f"|format(stock.current_price) }}
+                                    {% else %}
+                                        ${{ "%.2f"|format(stock.current_price) }}
+                                    {% endif %}
                                 {% else %}
                                     --
                                 {% endif %}

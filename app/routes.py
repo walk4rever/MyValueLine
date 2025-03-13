@@ -42,8 +42,8 @@ def add_stock():
         # Get stock data
         stock_data = StockService.get_stock_data(symbol, market)
         
-        if not stock_data:
-            flash(f'Could not find valid stock data for {symbol}')
+        if not stock_data or 'current_price' not in stock_data or not stock_data['current_price']:
+            flash(f'Could not find valid stock data for {symbol}. Please ensure the stock symbol exists.')
             return render_template('add_stock.html')
         
         # Create new stock
@@ -72,21 +72,32 @@ def stock_detail(stock_id):
     # Get latest data
     stock_data = StockService.get_stock_data(stock.symbol, stock.market)
     
-    # Get historical data for charts
+    # Get historical data for charts (5-year history)
     try:
-        hist_data = StockService.get_historical_data(stock.symbol, stock.market)
+        hist_data = StockService.get_historical_data(stock.symbol, stock.market, period='5y')
         print(f"Historical data for {stock.symbol}: {type(hist_data)} with {len(hist_data) if hist_data is not None else 0} rows")
-        chart_data = StockService.generate_chart(hist_data) if hist_data is not None and not hist_data.empty else None
+        
+        # Determine index name based on market
+        index_name = "S&P 500"
+        if stock.market == "HK":
+            index_name = "Hang Seng Index"
+        elif stock.market == "CN":
+            index_name = "CSI 300"
+            
+        # Pass stock symbol to the chart generation function
+        chart_data = StockService.generate_chart(hist_data, stock.market, stock_symbol=stock.symbol) if hist_data is not None and not hist_data.empty else None
         print(f"Chart data generated: {'Yes' if chart_data else 'No'}")
     except Exception as e:
         print(f"Error generating chart for {stock.symbol}: {e}")
         hist_data = None
         chart_data = None
+        index_name = "Market Index"
     
     return render_template('stock_detail.html', 
                           stock=stock, 
                           stock_data=stock_data,
-                          chart_data=chart_data)
+                          chart_data=chart_data,
+                          index_name=index_name)
 
 @app.route('/delete_stock/<int:stock_id>', methods=['POST'])
 def delete_stock(stock_id):

@@ -46,9 +46,9 @@ class StockService:
             return None
 
     @staticmethod
-    def get_historical_data(symbol, market='US', period='1y'):
+    def get_historical_data(symbol, market='US', period='5y'):
         """
-        Get historical price data
+        Get historical price data, default to 5 years
         """
         try:
             # Adjust the symbol based on market
@@ -76,9 +76,42 @@ class StockService:
             return None
             
     @staticmethod
-    def generate_chart(stock_data):
+    def get_index_data(market='US', period='5y'):
         """
-        Generate interactive chart data for the stock
+        Get historical price data for market index:
+        - US: S&P 500 (^GSPC)
+        - HK: Hang Seng Index (^HSI)
+        - CN: CSI 300 (000300.SS)
+        """
+        try:
+            index_ticker = "^GSPC"  # S&P 500 default
+            index_name = "S&P 500"
+            
+            if market == 'HK':
+                index_ticker = "^HSI"  # Hang Seng Index
+                index_name = "Hang Seng Index"
+            elif market == 'CN':
+                index_ticker = "000300.SS"  # CSI 300 Index
+                index_name = "CSI 300"
+                
+            print(f"Fetching {index_name} historical data for {period}")
+            index_data = yf.Ticker(index_ticker).history(period=period)
+            
+            if index_data is None or index_data.empty:
+                print(f"No {index_name} historical data returned")
+                return None, index_name
+                
+            print(f"Retrieved {len(index_data)} {index_name} historical data points")
+            return index_data, index_name
+        except Exception as e:
+            print(f"Error fetching {market} index data: {e}")
+            return None, "Market Index"
+    
+    @staticmethod
+    def generate_chart(stock_data, market='US', stock_symbol=None):
+        """
+        Generate interactive chart data for the stock price history
+        Shows 5-year actual price history of the stock
         """
         if stock_data is None or stock_data.empty:
             print("Cannot generate chart: stock_data is None or empty")
@@ -88,44 +121,59 @@ class StockService:
             print("Generating chart from historical data")
             
             # Verify we have the required columns
-            required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-            for col in required_columns:
-                if col not in stock_data.columns:
-                    print(f"Missing required column: {col}")
-                    return None
-                
+            if 'Close' not in stock_data.columns:
+                print("Missing required 'Close' column in stock data")
+                return None
+            
+            # Print some details about the data for debugging
+            print(f"Stock data date range: {stock_data.index.min()} to {stock_data.index.max()}")
+            
+            # Create figure
             fig = go.Figure()
             
-            # Add candlestick chart
+            # Use provided stock_symbol if available
+            display_symbol = stock_symbol if stock_symbol else "Stock"
+            
+            # Add stock price line - actual price, not normalized
+            fig.add_trace(go.Scatter(
+                x=stock_data.index,
+                y=stock_data['Close'],
+                name=display_symbol,
+                line=dict(color='rgb(0, 100, 255)', width=3),
+                mode='lines',
+                hovertemplate='$%{y:.2f}'
+            ))
+            
+            # Add candlestick view for more detailed price information
             fig.add_trace(go.Candlestick(
                 x=stock_data.index,
                 open=stock_data['Open'],
                 high=stock_data['High'],
                 low=stock_data['Low'],
                 close=stock_data['Close'],
-                name='Price'
-            ))
-            
-            # Add volume bars
-            fig.add_trace(go.Bar(
-                x=stock_data.index,
-                y=stock_data['Volume'],
-                name='Volume',
-                yaxis='y2'
+                name="OHLC",
+                visible='legendonly'  # Hidden by default, can be enabled from legend
             ))
             
             # Layout settings
             fig.update_layout(
-                title='Stock Price & Volume',
-                yaxis_title='Price',
-                yaxis2=dict(
-                    title='Volume',
-                    overlaying='y',
-                    side='right',
-                    showgrid=False
+                title=f'5-Year Price History: {display_symbol}',
+                yaxis=dict(
+                    title='Price (USD)',
+                    tickformat='.2f',
+                    hoverformat='.2f',
+                    showgrid=True,
+                    zeroline=True,
+                    zerolinecolor='black',
+                    autorange=True
                 ),
-                xaxis_rangeslider_visible=False,
-                height=600
+                xaxis=dict(
+                    title='Date (2019-2024)',
+                    rangeslider=dict(visible=False)
+                ),
+                legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='center', x=0.5),
+                height=600,
+                hovermode='x unified'
             )
             
             chart_json = fig.to_json()

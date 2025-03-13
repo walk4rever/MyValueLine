@@ -47,7 +47,7 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" id="addBtn" class="btn btn-primary" disabled>
                             <i class="fas fa-plus-circle"></i> Add to Portfolio
                         </button>
                         <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -62,6 +62,12 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
+    // Reset preview when symbol or market changes
+    $('#symbol, #market').on('change keyup', function() {
+        $('#stockPreview').addClass('d-none');
+        $('#addBtn').prop('disabled', true);
+    });
+    
     // Search button click handler
     $('#searchBtn').click(function() {
         const symbol = $('#symbol').val().trim();
@@ -71,6 +77,10 @@ $(document).ready(function() {
             alert('Please enter a stock symbol');
             return;
         }
+        
+        // Clear any existing preview and disable add button
+        $('#stockPreview').addClass('d-none');
+        $('#addBtn').prop('disabled', true);
         
         // Show loading state
         $(this).html('<i class="fas fa-spinner fa-spin"></i> Searching...');
@@ -88,11 +98,22 @@ $(document).ready(function() {
                 if (data.error) {
                     alert(data.error);
                     $('#stockPreview').addClass('d-none');
+                    // Disable the Add button when stock not found
+                    $('#addBtn').prop('disabled', true);
                 } else {
                     // Populate preview
                     $('#stockName').text(data.name || symbol);
                     $('#previewSymbol').text(symbol + ' (' + market + ')');
-                    $('#previewPrice').text(data.current_price ? data.current_price.toFixed(2) : 'N/A');
+                    
+                    // Display price with correct currency symbol
+                    let currencySymbol = '$';
+                    if (market === 'HK') {
+                        currencySymbol = 'HK$';
+                    } else if (market === 'CN') {
+                        currencySymbol = '¥';
+                    }
+                    
+                    $('#previewPrice').text(data.current_price ? currencySymbol + data.current_price.toFixed(2) : 'N/A');
                     
                     // Format change percentage
                     const changePercent = data.change_percent;
@@ -104,20 +125,23 @@ $(document).ready(function() {
                         $('#previewChange').text('N/A');
                     }
                     
-                    // Format market cap
+                    // Format market cap with the same currency symbol
                     if (data.market_cap) {
                         const marketCapInBillions = data.market_cap / 1000000000;
-                        $('#previewMarketCap').text(`$${marketCapInBillions.toFixed(2)}B`);
+                        $('#previewMarketCap').text(`${currencySymbol}${marketCapInBillions.toFixed(2)}B`);
                     } else {
                         $('#previewMarketCap').text('N/A');
                     }
                     
-                    // Show preview
+                    // Show preview and enable Add button
                     $('#stockPreview').removeClass('d-none');
+                    $('#addBtn').prop('disabled', false);
                 }
             },
             error: function() {
                 alert('Failed to search for stock. Please try again.');
+                $('#stockPreview').addClass('d-none');
+                $('#addBtn').prop('disabled', true);
             },
             complete: function() {
                 // Reset button
