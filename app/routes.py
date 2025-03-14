@@ -82,6 +82,17 @@ def stock_detail(stock_id):
     # Get latest data
     stock_data = StockService.get_stock_data(stock.symbol, stock.market)
     
+    # Get balance sheet data
+    try:
+        balance_sheet_data = StockService.get_balance_sheet_data(stock.symbol, stock.market)
+        if balance_sheet_data:
+            print(f"Balance sheet data retrieved for {stock.symbol}")
+        else:
+            print(f"No balance sheet data available for {stock.symbol}")
+    except Exception as e:
+        print(f"Error fetching balance sheet data for {stock.symbol}: {e}")
+        balance_sheet_data = None
+    
     # Get historical data for charts (5-year history)
     try:
         hist_data = StockService.get_historical_data(stock.symbol, stock.market, period='5y')
@@ -106,6 +117,7 @@ def stock_detail(stock_id):
     return render_template('stock_detail.html', 
                           stock=stock, 
                           stock_data=stock_data,
+                          balance_sheet_data=balance_sheet_data,
                           chart_data=chart_data,
                           index_name=index_name)
 

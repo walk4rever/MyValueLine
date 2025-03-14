@@ -4,6 +4,8 @@ import requests
 from datetime import datetime, date
 import plotly.graph_objs as go
 import json
+from decimal import Decimal
+import locale
 
 class StockService:
     @staticmethod
@@ -237,6 +239,105 @@ class StockService:
             print(f"Error fetching {market} index data: {e}")
             return None, "Market Index"
     
+    @staticmethod
+    def format_currency(value, market='US'):
+        """Format currency values based on market"""
+        if value is None:
+            return None
+            
+        try:
+            value = float(value)
+            if market == 'HK':
+                prefix = 'HK$'
+            elif market == 'CN':
+                prefix = '¥'
+            else:
+                prefix = '$'
+                
+            # Format large numbers for readability
+            if abs(value) >= 1e9:
+                return f"{prefix}{value/1e9:.2f}B"
+            elif abs(value) >= 1e6:
+                return f"{prefix}{value/1e6:.2f}M"
+            elif abs(value) >= 1e3:
+                return f"{prefix}{value/1e3:.2f}K"
+            else:
+                return f"{prefix}{value:.2f}"
+        except:
+            return str(value)
+    
+    @staticmethod
+    def get_balance_sheet_data(symbol, market='US'):
+        """
+        Get the latest quarterly balance sheet data
+        """
+        try:
+            # Adjust the symbol based on market
+            if market == 'HK':
+                query_symbol = f"{symbol}.HK"
+            elif market == 'CN':
+                query_symbol = f"{symbol}.SS" if symbol.startswith('6') else f"{symbol}.SZ"
+            else:  # US market
+                query_symbol = symbol
+                
+            stock = yf.Ticker(query_symbol)
+            
+            # Get quarterly balance sheet (most recent first)
+            balance_sheet = stock.quarterly_balance_sheet
+            
+            if balance_sheet is None or balance_sheet.empty:
+                print(f"No balance sheet data available for {query_symbol}")
+                return None
+                
+            # Get the most recent quarter's data (first column)
+            latest_quarter = balance_sheet.columns[0]
+            latest_data = balance_sheet[latest_quarter]
+            
+            # Convert to dictionary
+            balance_sheet_data = {
+                'quarter_date': latest_quarter.strftime('%Y-%m-%d'),
+                'total_assets': float(latest_data.get('Total Assets', 0)),
+                'total_liabilities': float(latest_data.get('Total Liabilities Net Minority Interest', 0)),
+                'equity': float(latest_data.get('Total Equity Gross Minority Interest', 0)),
+                'cash': float(latest_data.get('Cash And Cash Equivalents', 0)),
+                'debt': float(latest_data.get('Total Debt', 0)),
+                'current_assets': float(latest_data.get('Total Current Assets', 0)),
+                'current_liabilities': float(latest_data.get('Total Current Liabilities', 0)),
+                'inventory': float(latest_data.get('Inventory', 0)),
+                'accounts_receivable': float(latest_data.get('Accounts Receivable', 0)),
+                'accounts_payable': float(latest_data.get('Accounts Payable', 0)),
+            }
+            
+            # Calculate some additional ratios
+            try:
+                # Current ratio
+                if balance_sheet_data['current_liabilities'] != 0:
+                    balance_sheet_data['current_ratio'] = balance_sheet_data['current_assets'] / balance_sheet_data['current_liabilities']
+                else:
+                    balance_sheet_data['current_ratio'] = None
+                    
+                # Debt to equity ratio
+                if balance_sheet_data['equity'] != 0:
+                    balance_sheet_data['debt_equity_ratio'] = balance_sheet_data['debt'] / balance_sheet_data['equity']
+                else:
+                    balance_sheet_data['debt_equity_ratio'] = None
+                    
+                # Cash ratio
+                if balance_sheet_data['current_liabilities'] != 0:
+                    balance_sheet_data['cash_ratio'] = balance_sheet_data['cash'] / balance_sheet_data['current_liabilities']
+                else:
+                    balance_sheet_data['cash_ratio'] = None
+            except Exception as e:
+                print(f"Error calculating balance sheet ratios: {e}")
+                
+            return balance_sheet_data
+            
+        except Exception as e:
+            print(f"Error fetching balance sheet data for {symbol}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
     @staticmethod
     def generate_chart(stock_data, market='US', stock_symbol=None):
         """

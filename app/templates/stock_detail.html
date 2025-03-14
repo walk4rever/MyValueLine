@@ -188,72 +188,250 @@
 </div>
 {% endif %}
 
-<!-- Chart -->
+<!-- Balance Sheet Section -->
+{% if balance_sheet_data %}
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-light">
-        <h5 class="mb-0">5-Year Price History</h5>
+        <h5 class="mb-0">Latest Quarter Balance Sheet ({{ balance_sheet_data.quarter_date }})</h5>
     </div>
     <div class="card-body">
-        <div id="stockChart" style="height: 500px;">
-            {% if not chart_data %}
-                <div class="text-center py-5 text-muted">
-                    <p>Chart data not available</p>
+        <div class="row">
+            <!-- Balance Sheet Summary -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Balance Sheet Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">Total Assets</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.total_assets / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.total_assets / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.total_assets / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Total Liabilities</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.total_liabilities / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.total_liabilities / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.total_liabilities / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Total Equity</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.equity / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.equity / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.equity / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            {% else %}
-                <div class="mb-3 text-muted small">
-                    <p>This chart shows the actual price history of {{ stock.name }} ({{ stock.symbol }}) over the past 5 years (2019-2024).</p>
-                    <ul>
-                        <li><span style="color: rgb(0, 100, 255); font-weight: bold;">Blue line</span>: {{ stock.symbol }} closing price</li>
-                        <li>Toggle "OHLC" in the legend to view candlestick chart (Open-High-Low-Close)</li>
-                    </ul>
-                    <p class="mt-2"><em>Note: Hover over the chart to see precise price values on specific dates.</em></p>
+            </div>
+            
+            <!-- Financial Ratios -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Financial Ratios</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">Current Ratio</td>
+                                        <td class="text-end fw-bold">
+                                            {% if balance_sheet_data.current_ratio %}
+                                                {{ "%.2f"|format(balance_sheet_data.current_ratio) }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Debt to Equity</td>
+                                        <td class="text-end fw-bold">
+                                            {% if balance_sheet_data.debt_equity_ratio %}
+                                                {{ "%.2f"|format(balance_sheet_data.debt_equity_ratio) }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Cash Ratio</td>
+                                        <td class="text-end fw-bold">
+                                            {% if balance_sheet_data.cash_ratio %}
+                                                {{ "%.2f"|format(balance_sheet_data.cash_ratio) }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            {% endif %}
+            </div>
+            
+            <!-- Assets Breakdown -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Assets Breakdown</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">Cash & Equivalents</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.cash / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.cash / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.cash / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Current Assets</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.current_assets / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.current_assets / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.current_assets / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Inventory</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.inventory / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.inventory / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.inventory / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Accounts Receivable</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.accounts_receivable / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.accounts_receivable / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.accounts_receivable / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Liabilities Breakdown -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Liabilities Breakdown</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">Total Debt</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.debt / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.debt / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.debt / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Current Liabilities</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.current_liabilities / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.current_liabilities / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.current_liabilities / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Accounts Payable</td>
+                                        <td class="text-end fw-bold">
+                                            {% if stock.market == 'HK' %}
+                                                HK${{ "%.2f"|format(balance_sheet_data.accounts_payable / 1000000000) }}B
+                                            {% elif stock.market == 'CN' %}
+                                                ¥{{ "%.2f"|format(balance_sheet_data.accounts_payable / 1000000000) }}B
+                                            {% else %}
+                                                ${{ "%.2f"|format(balance_sheet_data.accounts_payable / 1000000000) }}B
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% else %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Balance Sheet</h5>
+    </div>
+    <div class="card-body">
+        <div class="text-center py-5 text-muted">
+            <p>Balance sheet data not available for this stock</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Chart section removed for redesign -->
 {% endblock %}
 
 {% block scripts %}
-{% if chart_data %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        try {
-            console.log("Chart data available, attempting to render chart");
-            const chartData = {{ chart_data | tojson }};
-            console.log("Chart data parsed successfully");
-            
-            // Log the data for debugging
-            console.log("Chart data length:", chartData.length);
-            
-            try {
-                const parsedData = JSON.parse(chartData);
-                console.log("JSON parsed successfully");
-                console.log("Has data property:", parsedData.hasOwnProperty('data'));
-                console.log("Has layout property:", parsedData.hasOwnProperty('layout'));
-                
-                if (parsedData.data && parsedData.layout) {
-                    console.log("Rendering chart with Plotly");
-                    Plotly.newPlot('stockChart', parsedData.data, parsedData.layout);
-                    console.log("Chart rendered successfully");
-                } else {
-                    console.error("Chart data is missing required properties");
-                    document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Unable to render chart: Invalid data format</p></div>';
-                }
-            } catch (parseError) {
-                console.error("Error parsing chart JSON:", parseError);
-                document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Unable to render chart: JSON parse error</p></div>';
-            }
-        } catch (error) {
-            console.error("Error rendering chart:", error);
-            document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Error rendering chart</p></div>';
-        }
-    });
-</script>
-{% else %}
-<script>
-    console.log("No chart data available");
-    document.getElementById('stockChart').innerHTML = '<div class="text-center py-5 text-muted"><p>Chart data not available</p></div>';
-</script>
-{% endif %}
+<!-- Chart scripts removed for redesign -->
 {% endblock %}
