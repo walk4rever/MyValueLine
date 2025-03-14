@@ -456,12 +456,12 @@
 <script>
 $(document).ready(function() {
     // Store original values
-    const originalPrice = {{ stock_data.current_price if stock_data.current_price else 0 }};
-    const originalMarketCap = {{ stock_data.market_cap if stock_data.market_cap else 0 }};
-    const originalPeRatio = {{ stock_data.pe_ratio if stock_data.pe_ratio else 0 }};
-    const originalROI = {{ stock_data.prospect_return if stock_data.prospect_return else 0 }};
-    const originalChangePercent = {{ stock_data.change_percent if stock_data.change_percent else 0 }};
-    const originalDividendYield = {{ stock_data.dividend_yield * 100 if stock_data.dividend_yield else 0 }};
+    const currentPrice = {{ stock_data.current_price if stock_data.current_price else 0 }};
+    const marketCap = {{ stock_data.market_cap if stock_data.market_cap else 0 }};
+    const peRatio = {{ stock_data.pe_ratio if stock_data.pe_ratio else 0 }};
+    const roi = {{ stock_data.prospect_return if stock_data.prospect_return else 0 }};
+    const changePercent = {{ stock_data.change_percent if stock_data.change_percent else 0 }};
+    const dividendYield = {{ stock_data.dividend_yield * 100 if stock_data.dividend_yield else 0 }};
     const eps = {{ stock_data.eps if stock_data.eps else 0 }};
     
     // Get currency symbol based on market
@@ -470,11 +470,11 @@ $(document).ready(function() {
     // Handle reset button click
     $('#reset-simulation').on('click', function() {
         // Reset slider value
-        $('#price-slider').val(originalPrice);
+        $('#price-slider').val(currentPrice);
         
         // Reset price display
         $('#current-price')
-            .text(currencySymbol + originalPrice.toFixed(2))
+            .text(currencySymbol + currentPrice.toFixed(2))
             .removeClass('text-primary');
         
         // Reset status indicator
@@ -485,19 +485,20 @@ $(document).ready(function() {
             
         // Reset price change percentage
         if ($('#price-change').length) {
-            const changeSign = originalChangePercent > 0 ? '+' : '';
-            const changeClass = originalChangePercent > 0 ? 'text-success' : (originalChangePercent < 0 ? 'text-danger' : '');
+            const changeSign = changePercent > 0 ? '+' : '';
+            const changeClass = changePercent > 0 ? 'text-success' : (changePercent < 0 ? 'text-danger' : '');
             
             $('#price-change')
-                .text(`${changeSign}${Math.abs(originalChangePercent).toFixed(2)}%`)
+                .text(`${changeSign}${Math.abs(changePercent).toFixed(2)}%`)
                 .removeClass('text-success text-danger')
                 .addClass(changeClass);
         }
         
         // Reset key statistics
-        updateStatValue('Market Cap', formatCurrency(originalMarketCap));
-        updateStatValue('P/E Ratio', originalPeRatio.toFixed(2));
-        updateStatValue('ROI', originalROI.toFixed(2) + '%');
+        updateStatValue('Market Cap', formatCurrency(marketCap));
+        updateStatValue('P/E Ratio', peRatio.toFixed(2));
+        updateStatValue('ROI', roi.toFixed(2) + '%');
+        updateStatValue('Dividend Yield', dividendYield.toFixed(2) + '%');
         
         // Hide reset button
         $(this).hide();
@@ -511,20 +512,20 @@ $(document).ready(function() {
         $('#current-price').text(currencySymbol + simulatedPrice.toFixed(2));
         
         // Calculate percentage change from original
-        const changePercent = ((simulatedPrice / originalPrice) - 1) * 100;
-        const changeClass = changePercent > 0 ? 'text-success' : (changePercent < 0 ? 'text-danger' : '');
-        const changeSign = changePercent > 0 ? '+' : '';
+        const priceChangePercent = ((simulatedPrice / currentPrice) - 1) * 100;
+        const changeClass = priceChangePercent > 0 ? 'text-success' : (priceChangePercent < 0 ? 'text-danger' : '');
+        const changeSign = priceChangePercent > 0 ? '+' : '';
         
         // Update the change percentage display
         if ($('#price-change').length) {
             $('#price-change')
-                .text(`${changeSign}${Math.abs(changePercent).toFixed(2)}%`)
+                .text(`${changeSign}${Math.abs(priceChangePercent).toFixed(2)}%`)
                 .removeClass('text-success text-danger')
                 .addClass(changeClass);
         }
         
         // Indicate if we're showing simulated or actual price
-        const isActual = Math.abs(simulatedPrice - originalPrice) < 0.01;
+        const isActual = Math.abs(simulatedPrice - currentPrice) < 0.01;
         
         // Apply styling to price display to indicate if it's simulated
         $('#current-price').toggleClass('text-primary', !isActual);
@@ -538,9 +539,9 @@ $(document).ready(function() {
         $('#reset-simulation').toggle(!isActual);
         
         // Recalculate key stats
-        if (originalPrice > 0) {
+        if (currentPrice > 0) {
             // Market Cap scales directly with price
-            const newMarketCap = originalMarketCap * (simulatedPrice / originalPrice);
+            const newMarketCap = marketCap * (simulatedPrice / currentPrice);
             updateStatValue('Market Cap', formatCurrency(newMarketCap));
             
             // P/E Ratio = Price / EPS
@@ -556,9 +557,9 @@ $(document).ready(function() {
             }
             
             // Dividend Yield changes inversely with price
-            if (originalDividendYield > 0) {
+            if (dividendYield > 0) {
                 // Calculate dividend amount from original yield and price
-                const annualDividend = (originalDividendYield / 100) * originalPrice;
+                const annualDividend = (dividendYield / 100) * currentPrice;
                 // Calculate new yield based on simulated price
                 const newYield = (annualDividend / simulatedPrice) * 100;
                 updateStatValue('Dividend Yield', newYield.toFixed(2) + '%');

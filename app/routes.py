@@ -192,3 +192,52 @@ def move_stock(stock_id, direction):
     
     db.session.commit()
     return redirect(url_for('index'))
+
+@app.route('/get_latest_stock_data/<int:stock_id>')
+def get_latest_stock_data(stock_id):
+    """API endpoint to get the latest stock data for auto-refresh"""
+    stock = Stock.query.get_or_404(stock_id)
+    
+    # Get latest data
+    stock_data = StockService.get_stock_data(stock.symbol, stock.market)
+    
+    if not stock_data:
+        return jsonify({'error': 'Could not fetch latest data'}), 404
+    
+    return jsonify(stock_data)
+
+@app.route('/get_all_stocks_data')
+def get_all_stocks_data():
+    """API endpoint to get latest data for all stocks in portfolio"""
+    stocks = Stock.query.order_by(Stock.display_order).all()
+    result = {}
+    
+    for stock in stocks:
+        try:
+            # Get latest data for this stock
+            data = StockService.get_stock_data(stock.symbol, stock.market)
+            
+            if data and 'current_price' in data:
+                # Update stock in database
+                stock.current_price = data['current_price']
+                stock.change_percent = data.get('change_percent', 0)
+                
+                # Calculate updated ROI (Prospect Return) = (EPS / Price) * 100
+                if stock.eps and stock.current_price > 0:
+                    stock.prospect_return = (stock.eps / stock.current_price) * 100
+                
+                stock.last_updated = datetime.utcnow()
+                
+                # Add to result - price, change percent, and ROI for frequent updates
+                result[stock.id] = {
+                    'current_price': stock.current_price,
+                    'change_percent': stock.change_percent,
+                    'prospect_return': stock.prospect_return
+                }
+        except Exception as e:
+            print(f"Failed to update {stock.symbol}: {e}")
+            
+    # Save all updates at once
+    db.session.commit()
+    
+    return jsonify(result)
