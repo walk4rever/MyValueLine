@@ -36,7 +36,7 @@
         <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h5 class="card-title">Current Price</h5>
-                <h2 class="display-4">
+                <h2 class="display-4" id="current-price">
                     {% if stock_data.current_price %}
                         {% if stock.market == 'HK' %}
                             HK${{ "%.2f"|format(stock_data.current_price) }}
@@ -51,9 +51,28 @@
                 </h2>
                 
                 {% if stock_data.change_percent %}
-                <p class="{% if stock_data.change_percent > 0 %}text-success{% elif stock_data.change_percent < 0 %}text-danger{% endif %} h5">
+                <p id="price-change" class="{% if stock_data.change_percent > 0 %}text-success{% elif stock_data.change_percent < 0 %}text-danger{% endif %} h5">
                     {% if stock_data.change_percent > 0 %}+{% endif %}{{ "%.2f"|format(stock_data.change_percent) }}%
                 </p>
+                {% endif %}
+                
+                {% if stock_data.current_price %}
+                <div class="mt-3 mb-1">
+                    <label for="price-slider" class="form-label text-muted">Simulate Different Price:</label>
+                    <input type="range" class="form-range" id="price-slider" 
+                        min="{{ stock_data.current_price * 0.5 }}" 
+                        max="{{ stock_data.current_price * 1.5 }}" 
+                        step="0.01" 
+                        value="{{ stock_data.current_price }}">
+                    <div class="d-flex justify-content-between text-muted small mb-2">
+                        <span>-50%</span>
+                        <span id="simulation-status" class="badge bg-secondary">Actual</span>
+                        <span>+50%</span>
+                    </div>
+                    <button id="reset-simulation" class="btn btn-sm btn-outline-secondary w-100 mt-1" style="display:none;">
+                        <i class="fas fa-undo-alt"></i> Reset to Actual Price
+                    </button>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -434,4 +453,145 @@
 
 {% block scripts %}
 <!-- Chart scripts removed for redesign -->
+<script>
+$(document).ready(function() {
+    // Store original values
+    const originalPrice = {{ stock_data.current_price if stock_data.current_price else 0 }};
+    const originalMarketCap = {{ stock_data.market_cap if stock_data.market_cap else 0 }};
+    const originalPeRatio = {{ stock_data.pe_ratio if stock_data.pe_ratio else 0 }};
+    const originalROI = {{ stock_data.prospect_return if stock_data.prospect_return else 0 }};
+    const originalChangePercent = {{ stock_data.change_percent if stock_data.change_percent else 0 }};
+    const originalDividendYield = {{ stock_data.dividend_yield * 100 if stock_data.dividend_yield else 0 }};
+    const eps = {{ stock_data.eps if stock_data.eps else 0 }};
+    
+    // Get currency symbol based on market
+    const currencySymbol = {% if stock.market == 'HK' %}'HK$'{% elif stock.market == 'CN' %}'¥'{% else %}'$'{% endif %};
+    
+    // Handle reset button click
+    $('#reset-simulation').on('click', function() {
+        // Reset slider value
+        $('#price-slider').val(originalPrice);
+        
+        // Reset price display
+        $('#current-price')
+            .text(currencySymbol + originalPrice.toFixed(2))
+            .removeClass('text-primary');
+        
+        // Reset status indicator
+        $('#simulation-status')
+            .text('Actual')
+            .removeClass('bg-primary')
+            .addClass('bg-secondary');
+            
+        // Reset price change percentage
+        if ($('#price-change').length) {
+            const changeSign = originalChangePercent > 0 ? '+' : '';
+            const changeClass = originalChangePercent > 0 ? 'text-success' : (originalChangePercent < 0 ? 'text-danger' : '');
+            
+            $('#price-change')
+                .text(`${changeSign}${Math.abs(originalChangePercent).toFixed(2)}%`)
+                .removeClass('text-success text-danger')
+                .addClass(changeClass);
+        }
+        
+        // Reset key statistics
+        updateStatValue('Market Cap', formatCurrency(originalMarketCap));
+        updateStatValue('P/E Ratio', originalPeRatio.toFixed(2));
+        updateStatValue('ROI', originalROI.toFixed(2) + '%');
+        
+        // Hide reset button
+        $(this).hide();
+    });
+    
+    // Handle price slider change
+    $('#price-slider').on('input', function() {
+        const simulatedPrice = parseFloat($(this).val());
+        
+        // Update price display
+        $('#current-price').text(currencySymbol + simulatedPrice.toFixed(2));
+        
+        // Calculate percentage change from original
+        const changePercent = ((simulatedPrice / originalPrice) - 1) * 100;
+        const changeClass = changePercent > 0 ? 'text-success' : (changePercent < 0 ? 'text-danger' : '');
+        const changeSign = changePercent > 0 ? '+' : '';
+        
+        // Update the change percentage display
+        if ($('#price-change').length) {
+            $('#price-change')
+                .text(`${changeSign}${Math.abs(changePercent).toFixed(2)}%`)
+                .removeClass('text-success text-danger')
+                .addClass(changeClass);
+        }
+        
+        // Indicate if we're showing simulated or actual price
+        const isActual = Math.abs(simulatedPrice - originalPrice) < 0.01;
+        
+        // Apply styling to price display to indicate if it's simulated
+        $('#current-price').toggleClass('text-primary', !isActual);
+        
+        $('#simulation-status')
+            .text(isActual ? 'Actual' : 'Simulated')
+            .removeClass('bg-secondary bg-primary')
+            .addClass(isActual ? 'bg-secondary' : 'bg-primary');
+            
+        // Show/hide reset button based on whether we're showing a simulated price
+        $('#reset-simulation').toggle(!isActual);
+        
+        // Recalculate key stats
+        if (originalPrice > 0) {
+            // Market Cap scales directly with price
+            const newMarketCap = originalMarketCap * (simulatedPrice / originalPrice);
+            updateStatValue('Market Cap', formatCurrency(newMarketCap));
+            
+            // P/E Ratio = Price / EPS
+            if (eps > 0) {
+                const newPeRatio = simulatedPrice / eps;
+                updateStatValue('P/E Ratio', newPeRatio.toFixed(2));
+            }
+            
+            // ROI (Prospect Return) = (EPS / Price) * 100
+            if (eps > 0) {
+                const newROI = (eps / simulatedPrice) * 100;
+                updateStatValue('ROI', newROI.toFixed(2) + '%');
+            }
+            
+            // Dividend Yield changes inversely with price
+            if (originalDividendYield > 0) {
+                // Calculate dividend amount from original yield and price
+                const annualDividend = (originalDividendYield / 100) * originalPrice;
+                // Calculate new yield based on simulated price
+                const newYield = (annualDividend / simulatedPrice) * 100;
+                updateStatValue('Dividend Yield', newYield.toFixed(2) + '%');
+            }
+        }
+    });
+    
+    // Helper function to update stat values
+    function updateStatValue(statName, newValue) {
+        const statElement = $('.card-body .row .text-muted').filter(function() {
+            return $(this).text() === statName;
+        });
+        
+        if (statElement.length > 0) {
+            statElement.next('.fw-bold').text(newValue);
+        }
+    }
+    
+    // Helper function to format currency values
+    function formatCurrency(value) {
+        if (!value) return '--';
+        
+        // Format based on size (B, M, K)
+        if (Math.abs(value) >= 1e9) {
+            return currencySymbol + (value/1e9).toFixed(2) + 'B';
+        } else if (Math.abs(value) >= 1e6) {
+            return currencySymbol + (value/1e6).toFixed(2) + 'M';
+        } else if (Math.abs(value) >= 1e3) {
+            return currencySymbol + (value/1e3).toFixed(2) + 'K';
+        } else {
+            return currencySymbol + value.toFixed(2);
+        }
+    }
+});
+</script>
 {% endblock %}
