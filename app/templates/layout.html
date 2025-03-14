@@ -32,7 +32,7 @@
         </div>
     </nav>
 
-    <main class="container mt-4">
+    <main class="container mt-3">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -47,7 +47,7 @@
         {% block content %}{% endblock %}
     </main>
     
-    <footer class="mt-5 py-3 text-center text-muted bg-light">
+    <footer class="mt-4 py-2 text-center text-muted bg-light">
         <div class="container">
             <p>MyValueLine &copy; {{ now.year }}</p>
         </div>
