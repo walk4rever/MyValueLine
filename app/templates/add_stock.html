@@ -12,12 +12,6 @@
             <div class="card-body">
                 <form method="POST" id="stockForm">
                     <div class="mb-3">
-                        <label for="symbol" class="form-label">Stock Symbol/Ticker</label>
-                        <input type="text" class="form-control" id="symbol" name="symbol" required placeholder="e.g. AAPL, MSFT, 0700, 600519">
-                        <div class="form-text">Enter the ticker symbol for the stock</div>
-                    </div>
-                    
-                    <div class="mb-3">
                         <label for="market" class="form-label">Market</label>
                         <select class="form-select" id="market" name="market">
                             <option value="US" selected>US Stock (e.g. AAPL, MSFT)</option>
@@ -26,10 +20,25 @@
                         </select>
                     </div>
                     
-                    <div class="mb-3 d-grid gap-2">
-                        <button type="button" id="searchBtn" class="btn btn-secondary">
-                            <i class="fas fa-search"></i> Search
-                        </button>
+                    <div class="mb-3">
+                        <label for="search_term" class="form-label">Stock Symbol/Ticker/Company</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search_term" name="search_term" required placeholder="Enter ticker symbol or company name (e.g. AAPL, Apple, 0700, Tencent)">
+                            <button type="button" class="btn btn-secondary" id="searchBtn">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                        <div class="form-text">Enter a ticker symbol or company name to search for stocks</div>
+                    </div>
+                    
+                    <input type="hidden" id="symbol" name="symbol" required>
+                    
+                    <!-- Search results for company name search -->
+                    <div id="nameSearchResults" class="mb-3 d-none">
+                        <label class="form-label">Select a stock:</label>
+                        <div class="list-group" id="stockSearchList">
+                            <!-- Results will be populated here -->
+                        </div>
                     </div>
                     
                     <div id="stockPreview" class="alert alert-light border d-none">
@@ -47,7 +56,8 @@
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" id="addBtn" class="btn btn-primary" disabled>
+                        <button type="submit" id="addBtn" class="btn btn-primary" disabled 
+                                onclick="return validateSubmission();">
                             <i class="fas fa-plus-circle"></i> Add to Portfolio
                         </button>
                         <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -62,48 +72,57 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // Reset preview when symbol or market changes
-    $('#symbol, #market').on('change keyup', function() {
+    // Reset preview when search term or market changes
+    $('#search_term, #market').on('change keyup', function() {
         $('#stockPreview').addClass('d-none');
+        $('#nameSearchResults').addClass('d-none');
         $('#addBtn').prop('disabled', true);
     });
     
-    // Search button click handler
+    // Unified search button click handler
     $('#searchBtn').click(function() {
-        const symbol = $('#symbol').val().trim();
+        const searchTerm = $('#search_term').val().trim();
         const market = $('#market').val();
         
-        if (!symbol) {
-            alert('Please enter a stock symbol');
+        if (!searchTerm || searchTerm.length < 2) {
+            alert('Please enter at least 2 characters to search');
             return;
         }
         
         // Clear any existing preview and disable add button
         $('#stockPreview').addClass('d-none');
+        $('#nameSearchResults').addClass('d-none');
+        $('#stockSearchList').empty();
         $('#addBtn').prop('disabled', true);
         
         // Show loading state
         $(this).html('<i class="fas fa-spinner fa-spin"></i> Searching...');
         $(this).prop('disabled', true);
         
-        // Send AJAX request
+        // First try as a direct symbol match
+        trySymbolSearch(searchTerm, market);
+    });
+    
+    // Function to try searching by symbol first
+    function trySymbolSearch(searchTerm, market) {
         $.ajax({
             url: '{{ url_for("search_stock") }}',
             type: 'POST',
             data: {
-                symbol: symbol,
+                symbol: searchTerm.toUpperCase(),
                 market: market
             },
             success: function(data) {
                 if (data.error) {
-                    alert(data.error);
-                    $('#stockPreview').addClass('d-none');
-                    // Disable the Add button when stock not found
-                    $('#addBtn').prop('disabled', true);
+                    // If symbol search fails, try company name search
+                    tryNameSearch(searchTerm, market);
                 } else {
+                    // Set the hidden symbol field with the found valid symbol
+                    $('#symbol').val(searchTerm.toUpperCase());
+                    
                     // Populate preview
-                    $('#stockName').text(data.name || symbol);
-                    $('#previewSymbol').text(symbol + ' (' + market + ')');
+                    $('#stockName').text(data.name || searchTerm.toUpperCase());
+                    $('#previewSymbol').text(searchTerm.toUpperCase() + ' (' + market + ')');
                     
                     // Display price with correct currency symbol
                     let currencySymbol = '$';
@@ -136,20 +155,89 @@ $(document).ready(function() {
                     // Show preview and enable Add button
                     $('#stockPreview').removeClass('d-none');
                     $('#addBtn').prop('disabled', false);
+                    
+                    // Reset search button
+                    $('#searchBtn').html('<i class="fas fa-search"></i> Search');
+                    $('#searchBtn').prop('disabled', false);
                 }
             },
             error: function() {
-                alert('Failed to search for stock. Please try again.');
-                $('#stockPreview').addClass('d-none');
-                $('#addBtn').prop('disabled', true);
-            },
-            complete: function() {
-                // Reset button
-                $('#searchBtn').html('<i class="fas fa-search"></i> Search');
-                $('#searchBtn').prop('disabled', false);
+                // If symbol search fails with an error, try company name search
+                tryNameSearch(searchTerm, market);
             }
         });
+    }
+    
+    // Function to search by company name
+    function tryNameSearch(searchTerm, market) {
+        $.ajax({
+            url: '{{ url_for("search_by_name") }}',
+            type: 'POST',
+            data: {
+                name: searchTerm,
+                market: market
+            },
+            success: function(data) {
+                // Reset search button
+                $('#searchBtn').html('<i class="fas fa-search"></i> Search');
+                $('#searchBtn').prop('disabled', false);
+                
+                if (data.error) {
+                    alert('No matching stocks found. Please try a different search term or market.');
+                } else if (data.matches && data.matches.length > 0) {
+                    // Populate search results list
+                    data.matches.forEach(function(stock) {
+                        const listItem = $('<button>')
+                            .addClass('list-group-item list-group-item-action')
+                            .attr('type', 'button')
+                            .html(`<strong>${stock.symbol}</strong> - ${stock.name}`);
+                            
+                        // Add click handler to select this stock
+                        listItem.click(function() {
+                            // Set the hidden symbol field with the selected symbol
+                            $('#symbol').val(stock.symbol);
+                            $('#search_term').val(stock.symbol); // Update visible field for clarity
+                            $('#nameSearchResults').addClass('d-none');
+                            
+                            // Search directly with this symbol
+                            trySymbolSearch(stock.symbol, market);
+                        });
+                        
+                        $('#stockSearchList').append(listItem);
+                    });
+                    
+                    // Show results
+                    $('#nameSearchResults').removeClass('d-none');
+                } else {
+                    alert('No matching stocks found. Please try a different search term or market.');
+                }
+            },
+            error: function() {
+                // Reset search button
+                $('#searchBtn').html('<i class="fas fa-search"></i> Search');
+                $('#searchBtn').prop('disabled', false);
+                
+                alert('Search failed. Please try again.');
+            }
+        });
+    }
+    
+    // Allow pressing Enter in search term field to trigger search
+    $('#search_term').keypress(function(e) {
+        if (e.which === 13) { // Enter key
+            e.preventDefault();
+            $('#searchBtn').click();
+        }
     });
+    
+    // Validation function to ensure the symbol is set before submission
+    window.validateSubmission = function() {
+        if (!$('#symbol').val()) {
+            alert('Please search for a valid stock first before adding to portfolio.');
+            return false;
+        }
+        return true;
+    }
 });
 </script>
 {% endblock %}

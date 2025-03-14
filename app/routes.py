@@ -2,13 +2,13 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from app import app, db
 from app.models import Stock
 from app.stock_service import StockService
-from datetime import datetime
+from datetime import datetime, date
 import json
 
 @app.route('/')
 def index():
     """Display the portfolio dashboard"""
-    stocks = Stock.query.all()
+    stocks = Stock.query.order_by(Stock.display_order).all()
     
     # Update latest prices for all stocks
     for stock in stocks:
@@ -19,6 +19,11 @@ def index():
                 if data and 'current_price' in data:
                     stock.current_price = data['current_price']
                     stock.change_percent = data.get('change_percent', 0)
+                    stock.ytd_change_percent = data.get('ytd_change_percent')
+                    stock.eps = data.get('eps')
+                    stock.prospect_return = data.get('prospect_return')  # ROI
+                    stock.roe = data.get('roe')
+                        
                     stock.last_updated = datetime.utcnow()
                     db.session.commit()
         except Exception as e:
@@ -53,6 +58,10 @@ def add_stock():
             market=market,
             current_price=stock_data.get('current_price'),
             change_percent=stock_data.get('change_percent'),
+            ytd_change_percent=stock_data.get('ytd_change_percent'),
+            eps=stock_data.get('eps'),
+            prospect_return=stock_data.get('prospect_return'),  # ROI
+            roe=stock_data.get('roe'),
             last_updated=datetime.utcnow()
         )
         
@@ -121,3 +130,52 @@ def search_stock():
         return jsonify({'error': 'Stock not found'})
     
     return jsonify(data)
+    
+@app.route('/search_by_name', methods=['POST'])
+def search_by_name():
+    """API to search for stocks by company name"""
+    name = request.form.get('name', '').strip()
+    market = request.form.get('market', 'US')
+    
+    if not name or len(name) < 2:
+        return jsonify({'error': 'Please enter at least 2 characters for the company name'})
+    
+    results = StockService.search_by_name(name, market)
+    
+    if not results:
+        return jsonify({'error': 'No matches found'})
+    
+    return jsonify({'matches': results})
+    
+@app.route('/move_stock/<int:stock_id>/<direction>', methods=['POST'])
+def move_stock(stock_id, direction):
+    """Move a stock up or down in the display order"""
+    if direction not in ['up', 'down']:
+        flash('Invalid direction')
+        return redirect(url_for('index'))
+        
+    stock = Stock.query.get_or_404(stock_id)
+    stocks = Stock.query.order_by(Stock.display_order).all()
+    
+    # Find the current index of the stock
+    current_index = next((i for i, s in enumerate(stocks) if s.id == stock_id), None)
+    if current_index is None:
+        flash('Stock not found')
+        return redirect(url_for('index'))
+        
+    # Calculate new position
+    if direction == 'up' and current_index > 0:
+        # Swap with the stock above
+        prev_stock = stocks[current_index - 1]
+        temp_order = stock.display_order
+        stock.display_order = prev_stock.display_order
+        prev_stock.display_order = temp_order
+    elif direction == 'down' and current_index < len(stocks) - 1:
+        # Swap with the stock below
+        next_stock = stocks[current_index + 1]
+        temp_order = stock.display_order
+        stock.display_order = next_stock.display_order
+        next_stock.display_order = temp_order
+    
+    db.session.commit()
+    return redirect(url_for('index'))

@@ -4,3 +4,4 @@ yfinance==0.2.54
 pandas==2.2.3
 plotly==6.0.0
 requests==2.32.3
+yahoo-fin==0.8.9
