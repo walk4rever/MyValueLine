@@ -125,10 +125,36 @@ class StockService:
             except Exception as e:
                 print(f"Error fetching ROE for {symbol}: {e}")
             
+            # Get stock name
+            name = info.get('shortName', info.get('longName', symbol))
+            
+            # Get Chinese name for HK/CN stocks if available
+            chinese_name = None
+            if market in ['HK', 'CN']:
+                # This is a placeholder implementation
+                # In a real-world scenario, you would use a database or API to look up Chinese names
+                # Some common examples for demonstration:
+                common_stocks = {
+                    # HK stocks
+                    '0700': '腾讯控股',
+                    '9988': '阿里巴巴',
+                    '0941': '中国移动',
+                    '0005': '汇丰控股',
+                    '3690': '美团',
+                    # CN stocks
+                    '600519': '贵州茅台',
+                    '601398': '工商银行',
+                    '600036': '招商银行',
+                    '601318': '中国平安',
+                    '000858': '五粮液',
+                }
+                chinese_name = common_stocks.get(symbol)
+            
             # Get basic data
             stock_data = {
                 'symbol': symbol,
-                'name': info.get('shortName', info.get('longName', symbol)),
+                'name': name,
+                'chinese_name': chinese_name,
                 'current_price': current_price,
                 'change_percent': info.get('regularMarketChangePercent'),
                 'ytd_change_percent': None,  # Setting to None as per request

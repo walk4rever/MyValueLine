@@ -55,6 +55,7 @@ def add_stock():
         new_stock = Stock(
             symbol=symbol,
             name=stock_data.get('name', symbol),
+            chinese_name=stock_data.get('chinese_name'),
             market=market,
             current_price=stock_data.get('current_price'),
             change_percent=stock_data.get('change_percent'),

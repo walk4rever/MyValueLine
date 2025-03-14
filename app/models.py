@@ -6,6 +6,7 @@ class Stock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     symbol = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=True)
+    chinese_name = db.Column(db.String(100), nullable=True)  # Chinese name for HK/CN stocks
     market = db.Column(db.String(20), nullable=False)  # US, HK, CN
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
     

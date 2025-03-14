@@ -40,7 +40,13 @@
                         {% for stock in stocks %}
                         <tr>
                             <td><strong>{{ stock.symbol }}</strong></td>
-                            <td>{{ stock.name }}</td>
+                            <td>
+                                {% if stock.market in ['HK', 'CN'] %}
+                                    {{ stock.name }} {% if stock.chinese_name %}({{ stock.chinese_name }}){% endif %}
+                                {% else %}
+                                    {{ stock.name }}
+                                {% endif %}
+                            </td>
                             <td>{{ stock.market }}</td>
                             <td class="text-end">
                                 {% if stock.current_price %}
