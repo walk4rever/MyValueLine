@@ -268,3 +268,27 @@ def stock_insights(stock_id):
         'stock_name': stock.name,
         'model_id': model_id
     })
+    
+@app.route('/dashboard_insights', methods=['POST'])
+def dashboard_insights():
+    """API endpoint for LLM chatbot responses from dashboard"""
+    
+    # Get user's message from the request
+    data = request.get_json()
+    if not data or 'message' not in data:
+        return jsonify({'error': 'No message provided'}), 400
+        
+    user_message = data['message']
+    
+    # Get insight from LLM via the service
+    response = StockService.get_stock_insights(user_message)
+    
+    # Get the model ID (fallback to default if not available)
+    import os
+    model_id = os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-7-sonnet-20250219-v1:0')
+    
+    # Return response as JSON
+    return jsonify({
+        'response': response,
+        'model_id': model_id
+    })
