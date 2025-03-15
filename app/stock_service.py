@@ -7,6 +7,8 @@ import json
 from decimal import Decimal
 import locale
 import os
+import boto3
+from botocore.exceptions import ClientError
 
 class StockService:
     @staticmethod
@@ -419,95 +421,169 @@ class StockService:
             return None
             
     @staticmethod
-    def get_stock_insights(symbol, market, user_message):
+    def get_stock_insights(user_message):
         """
-        Generate insights about a stock using an LLM
+        Generate responses to user messages using LLM via Amazon Bedrock
         
         Args:
-            symbol (str): Stock symbol
-            market (str): Market (US, HK, CN)
             user_message (str): User's message to the chatbot
             
         Returns:
             str: Response from the LLM
         """
         try:
-            # Get stock data to provide context to the LLM
-            stock_data = StockService.get_stock_data(symbol, market)
-            balance_sheet = StockService.get_balance_sheet_data(symbol, market)
+            # Create the prompt for the LLM (simple conversational context)
+            prompt = f"""You are a helpful assistant focused on financial topics and markets. Your name is ValueBot.
+
+The user has asked: "{user_message}"
+
+Provide a helpful, accurate, and concise response.
+If you don't have specific information to answer the question, acknowledge that limitation.
+Format your response with clean line breaks and bullet points where appropriate.
+"""
             
-            if not stock_data:
-                return "Sorry, I couldn't retrieve information about this stock."
+            # Check if we should use mock responses for testing
+            if os.getenv('USE_MOCK_LLM', 'false').lower() == 'true':
+                # Simple mock response for testing
+                return f"This is a mock response to: {user_message}"
             
-            # Prepare context for the LLM from the stock data
-            context = {
-                "symbol": symbol,
-                "name": stock_data.get('name', symbol),
-                "market": market,
-                "current_price": stock_data.get('current_price'),
-                "market_cap": stock_data.get('market_cap'),
-                "pe_ratio": stock_data.get('pe_ratio'),
-                "eps": stock_data.get('eps'),
-                "dividend_yield": stock_data.get('dividend_yield'),
-                "prospect_return": stock_data.get('prospect_return'),
-                "roe": stock_data.get('roe')
-            }
-            
-            # Add balance sheet data if available
-            if balance_sheet:
-                context["balance_sheet"] = {
-                    "total_assets": balance_sheet.get('total_assets'),
-                    "total_liabilities": balance_sheet.get('total_liabilities'),
-                    "equity": balance_sheet.get('equity'),
-                    "debt": balance_sheet.get('debt'),
-                    "current_ratio": balance_sheet.get('current_ratio'),
-                    "debt_equity_ratio": balance_sheet.get('debt_equity_ratio')
-                }
-            
-            # URL for an external LLM API, could be OpenAI, Anthropic, etc.
-            # For demonstration, we'll return a mock response
-            # In production, you'd make an API call here
-            
-            # Mock response for demonstration
-            if "dividend" in user_message.lower():
-                if stock_data.get('dividend_yield'):
-                    yield_value = f"{stock_data.get('dividend_yield', 0) * 100:.2f}%"
-                    return f"The current dividend yield for {stock_data.get('name')} is {yield_value}."
-                else:
-                    return f"{stock_data.get('name')} doesn't currently pay dividends."
-            
-            elif "pe ratio" in user_message.lower() or "p/e" in user_message.lower():
-                if stock_data.get('pe_ratio'):
-                    return f"The P/E ratio for {stock_data.get('name')} is {stock_data.get('pe_ratio'):.2f}."
-                else:
-                    return f"I couldn't find P/E ratio data for {stock_data.get('name')}."
-            
-            elif "competitors" in user_message.lower():
-                # This would normally use industry data to provide competitors
-                return f"As a finance assistant, I could analyze competitors of {stock_data.get('name')}, but that would require more comprehensive industry data."
-            
-            elif "balance sheet" in user_message.lower():
-                if balance_sheet:
-                    return (
-                        f"Based on the latest balance sheet for {stock_data.get('name')}:\n"
-                        f"• Total Assets: ${balance_sheet.get('total_assets')/1e9:.2f}B\n"
-                        f"• Total Liabilities: ${balance_sheet.get('total_liabilities')/1e9:.2f}B\n"
-                        f"• Equity: ${balance_sheet.get('equity')/1e9:.2f}B\n"
-                        f"• Debt to Equity Ratio: {balance_sheet.get('debt_equity_ratio'):.2f}"
-                    )
-                else:
-                    return f"I don't have balance sheet data available for {stock_data.get('name')}."
-            
-            else:
-                # General response for other queries
-                return (
-                    f"I can provide insights about {stock_data.get('name')} ({symbol}).\n\n"
-                    f"The current stock price is ${stock_data.get('current_price', 'N/A'):.2f} with a market cap of ${stock_data.get('market_cap', 0)/1e9:.2f}B.\n\n"
-                    f"You can ask me about the company's financials, performance, valuation, or specific metrics like P/E ratio, dividend yield, etc."
-                )
+            # Otherwise use Amazon Bedrock API
+            return StockService._call_bedrock_llm(prompt)
                 
         except Exception as e:
             print(f"Error in get_stock_insights: {e}")
             import traceback
             traceback.print_exc()
             return "Sorry, I encountered an error while processing your request."
+            
+    @staticmethod
+    def _call_bedrock_llm(prompt):
+        """
+        Call Amazon Bedrock API to get LLM response
+        """
+        try:
+            # Initialize the Bedrock client
+            bedrock_runtime = boto3.client(
+                service_name='bedrock-runtime',
+                region_name=os.getenv('AWS_REGION', 'us-east-1')
+            )
+            
+            # Define the model parameters
+            # Use Claude 3.5 Sonnet as default
+            model_id = os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-7-sonnet-20250219-v1:0')
+            
+            # Prepare the request body for Claude models
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4000,
+                "top_k": 250,
+                "stop_sequences": [],
+                "temperature": 1,
+                "top_p": 0.999,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            # Make the API call
+            response = bedrock_runtime.invoke_model(
+                modelId=model_id,
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps(request_body)
+            )
+            
+            # Parse the response for Claude models
+            response_body = json.loads(response.get('body').read())
+            
+            # Extract the response text from the Claude response format
+            return response_body.get('content', [{}])[0].get('text', "No response generated")
+            
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            error_message = e.response.get("Error", {}).get("Message")
+            print(f"Bedrock API error: {error_code} - {error_message}")
+            
+            # Return a graceful fallback response
+            return "I'm having trouble accessing the AI service right now. Please try again later."
+        except Exception as e:
+            print(f"Error calling Bedrock LLM: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Return a graceful fallback response
+            return "I'm having trouble generating a response right now. Please try again later."
+    
+    @staticmethod
+    def _get_mock_insight_response(stock_data, balance_sheet, user_message):
+        """
+        Generate mock LLM responses for testing without API calls
+        """
+        # Mock response for demonstration or testing
+        if "dividend" in user_message.lower():
+            name = stock_data.get('name', 'this stock')
+            if stock_data.get('dividend_yield') is not None:
+                yield_value = f"{stock_data.get('dividend_yield', 0) * 100:.2f}%"
+                return f"The current dividend yield for {name} is {yield_value}."
+            else:
+                return f"{name} doesn't currently pay dividends."
+        
+        elif "pe ratio" in user_message.lower() or "p/e" in user_message.lower():
+            name = stock_data.get('name', 'this stock')
+            if stock_data.get('pe_ratio') is not None:
+                return f"The P/E ratio for {name} is {stock_data.get('pe_ratio'):.2f}."
+            else:
+                return f"I couldn't find P/E ratio data for {name}."
+        
+        elif "competitors" in user_message.lower():
+            # This would normally use industry data to provide competitors
+            name = stock_data.get('name', 'this stock')
+            return f"As a finance assistant, I could analyze competitors of {name}, but that would require more comprehensive industry data."
+        
+        elif "balance sheet" in user_message.lower():
+            if balance_sheet:
+                # Check if each value exists before formatting
+                assets = f"${balance_sheet.get('total_assets')/1e9:.2f}B" if balance_sheet.get('total_assets') is not None else "N/A"
+                liabilities = f"${balance_sheet.get('total_liabilities')/1e9:.2f}B" if balance_sheet.get('total_liabilities') is not None else "N/A"
+                equity = f"${balance_sheet.get('equity')/1e9:.2f}B" if balance_sheet.get('equity') is not None else "N/A"
+                debt_equity = f"{balance_sheet.get('debt_equity_ratio'):.2f}" if balance_sheet.get('debt_equity_ratio') is not None else "N/A"
+                
+                return (
+                    f"Based on the latest balance sheet for {stock_data.get('name')}:\n"
+                    f"• Total Assets: {assets}\n"
+                    f"• Total Liabilities: {liabilities}\n"
+                    f"• Equity: {equity}\n"
+                    f"• Debt to Equity Ratio: {debt_equity}"
+                )
+            else:
+                return f"I don't have balance sheet data available for {stock_data.get('name')}."
+        
+        else:
+            # General response for other queries
+            name = stock_data.get('name', 'this stock')
+            symbol = stock_data.get('symbol', '')
+            
+            # Format price and market cap safely
+            if stock_data.get('current_price') is not None:
+                price = f"${stock_data.get('current_price'):.2f}"
+            else:
+                price = "N/A"
+                
+            if stock_data.get('market_cap') is not None:
+                market_cap = f"${stock_data.get('market_cap')/1e9:.2f}B"
+            else:
+                market_cap = "N/A"
+                
+            return (
+                f"I can provide insights about {name} ({symbol}).\n\n"
+                f"The current stock price is {price} with a market cap of {market_cap}.\n\n"
+                f"You can ask me about the company's financials, performance, valuation, or specific metrics like P/E ratio, dividend yield, etc."
+            )

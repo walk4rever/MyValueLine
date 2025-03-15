@@ -5,6 +5,4 @@ pandas==2.2.3
 plotly==6.0.0
 requests==2.32.3
 yahoo-fin==0.8.9
-# For production, you might add:
-# anthropic>=0.15.0  # For Claude API integration
-# openai>=1.0.0      # For OpenAI API integration
+boto3>=1.28.0  # For AWS Bedrock API integration

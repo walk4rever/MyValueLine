@@ -9,6 +9,7 @@ My Value Line, a personal stocks portfolio management dashboard.
 - Interactive price charts for each stock
 - Clean, responsive dashboard interface inspired by Value Line
 - Real-time stock data via Yahoo Finance
+- AI-powered stock insights chatbot using Amazon Bedrock
 
 ## Requirements
 
@@ -19,6 +20,7 @@ My Value Line, a personal stocks portfolio management dashboard.
 - pandas
 - plotly
 - requests
+- boto3 (for Amazon Bedrock integration)
 
 ## Installation
 
@@ -36,7 +38,7 @@ My Value Line, a personal stocks portfolio management dashboard.
 
 3. Install dependencies:
    ```
-   pip install flask flask-sqlalchemy yfinance pandas plotly requests
+   pip install -r requirements.txt
    ```
 
 ## Usage
@@ -55,6 +57,28 @@ My Value Line, a personal stocks portfolio management dashboard.
 - **Dashboard**: View all your stocks and their performance at a glance
 - **Add Stock**: Search for and add stocks from US, Hong Kong, and China markets
 - **Stock Details**: View comprehensive data and charts for each stock in your portfolio
+- **Stock Insights**: Ask questions about stocks and get AI-powered analyses and explanations
+
+## Amazon Bedrock Configuration
+
+The Stock Insights chatbot uses Amazon Bedrock's LLM capabilities. To configure:
+
+1. Set up AWS credentials with Bedrock access:
+   ```
+   export AWS_ACCESS_KEY_ID=your_access_key
+   export AWS_SECRET_ACCESS_KEY=your_secret_key
+   export AWS_REGION=us-east-1
+   ```
+
+2. Configure the model (optional):
+   ```
+   export BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
+   ```
+
+3. For local testing without API calls:
+   ```
+   export USE_MOCK_LLM=true
+   ```
 
 ## License
 

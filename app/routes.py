@@ -255,11 +255,16 @@ def stock_insights(stock_id):
     user_message = data['message']
     
     # Get insight from LLM via the service
-    response = StockService.get_stock_insights(stock.symbol, stock.market, user_message)
+    response = StockService.get_stock_insights(user_message)
+    
+    # Get the model ID (fallback to default if not available)
+    import os
+    model_id = os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-7-sonnet-20250219-v1:0')
     
     # Return response as JSON
     return jsonify({
         'response': response,
         'stock_symbol': stock.symbol,
-        'stock_name': stock.name
+        'stock_name': stock.name,
+        'model_id': model_id
     })
