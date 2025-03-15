@@ -437,7 +437,7 @@ class StockService:
 
 The user has asked: "{user_message}"
 
-Provide a helpful, accurate, and concise response.
+Use the language which the user input, and provide a helpful, accurate, and concise response.
 If you don't have specific information to answer the question, acknowledge that limitation.
 Format your response with clean line breaks and bullet points where appropriate.
 """
