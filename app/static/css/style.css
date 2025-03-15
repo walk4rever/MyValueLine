@@ -9,6 +9,26 @@ body {
     line-height: 1.4;
 }
 
+/* Markdown Blog Styling */
+.blog-list-item {
+    transition: transform 0.2s;
+}
+
+.blog-list-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.blog-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.blog-metadata {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
 .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;

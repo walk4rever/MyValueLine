@@ -30,3 +30,14 @@ class Stock(db.Model):
         """Get the next available display order number"""
         max_order = db.session.query(func.max(Stock.display_order)).scalar()
         return (max_order or 0) + 1
+
+class MarkdownBlog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_published = db.Column(db.Boolean, default=False)
+    
+    def __repr__(self):
+        return f'<MarkdownBlog {self.title}>'

@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ 'Edit' if blog else 'Create' }} Blog{% endblock %}
+
+{% block head %}
+<!-- Add the Markdown editor CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>{{ 'Edit' if blog else 'Create New' }} Blog</h1>
+        <p class="text-muted">{{ 'Edit your' if blog else 'Write a new' }} Markdown blog</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('markdown_blogs') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Blogs
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('edit_blog', blog_id=blog.id) if blog else url_for('create_blog') }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ blog.title if blog else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="content" class="form-label">Content (Markdown)</label>
+                <textarea id="editor" name="content">{{ blog.content if blog else '' }}</textarea>
+            </div>
+            <div class="d-flex justify-content-between">
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <a href="{{ url_for('markdown_blogs') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                </div>
+                {% if blog %}
+                <div>
+                    <form action="{{ url_for('toggle_publish', blog_id=blog.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-{% if blog.is_published %}warning{% else %}success{% endif %}">
+                            <i class="fas {% if blog.is_published %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                            {{ 'Unpublish' if blog.is_published else 'Publish' }}
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Add the Markdown editor JS -->
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+<script>
+$(document).ready(function() {
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('editor'),
+        spellChecker: false,
+        autofocus: true,
+        autosave: {
+            enabled: true,
+            uniqueId: 'blog-editor-{{ blog.id if blog else "new" }}',
+            delay: 1000,
+        },
+        toolbar: [
+            'bold', 'italic', 'strikethrough', 'heading', '|',
+            'code', 'quote', 'unordered-list', 'ordered-list', '|',
+            'link', 'image', 'table', '|',
+            'preview', 'side-by-side', 'fullscreen', '|',
+            'guide'
+        ],
+        renderingConfig: {
+            codeSyntaxHighlighting: true,
+        },
+        placeholder: "Write your blog using Markdown...",
+    });
+});
+</script>
+{% endblock %}

@@ -1,8 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from app import app, db
-from app.models import Stock
+from app.models import Stock, MarkdownBlog
 from app.stock_service import StockService
 from datetime import datetime, date
+import markdown
+import bleach
 import json
 
 @app.route('/')
@@ -292,3 +294,123 @@ def dashboard_insights():
         'response': response,
         'model_id': model_id
     })
+    
+# ValueMD Blog Routes
+
+@app.route('/blogs')
+def markdown_blogs():
+    """Display all markdown blogs"""
+    blogs = MarkdownBlog.query.order_by(MarkdownBlog.updated_at.desc()).all()
+    return render_template('markdown_blogs.html', blogs=blogs)
+
+@app.route('/blogs/create', methods=['GET', 'POST'])
+def create_blog():
+    """Create a new markdown blog"""
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        
+        if not title or not content:
+            flash('Title and content are required!')
+            return render_template('edit_blog.html')
+        
+        new_blog = MarkdownBlog(
+            title=title,
+            content=content
+        )
+        
+        db.session.add(new_blog)
+        db.session.commit()
+        
+        flash('Blog created successfully!')
+        return redirect(url_for('view_blog', blog_id=new_blog.id))
+    
+    return render_template('edit_blog.html')
+
+@app.route('/blogs/<int:blog_id>')
+def view_blog(blog_id):
+    """View a markdown blog"""
+    blog = MarkdownBlog.query.get_or_404(blog_id)
+    
+    # Convert markdown to HTML (with sanitization for security)
+    html_content = markdown.markdown(
+        blog.content,
+        extensions=['extra', 'codehilite', 'nl2br', 'tables']
+    )
+    
+    # Sanitize HTML to prevent XSS attacks
+    allowed_tags = [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'a', 'abbr', 'acronym', 'b', 'blockquote',
+        'code', 'em', 'i', 'li', 'ol', 'strong', 'ul',
+        'br', 'del', 'ins', 'img', 'pre', 'table', 'tbody',
+        'td', 'th', 'thead', 'tr', 'hr', 'span', 'div'
+    ]
+    
+    allowed_attrs = {
+        '*': ['class', 'style'],
+        'a': ['href', 'title', 'rel'],
+        'img': ['src', 'alt', 'title', 'width', 'height']
+    }
+    
+    sanitized_html = bleach.clean(
+        html_content,
+        tags=allowed_tags,
+        attributes=allowed_attrs,
+        strip=True
+    )
+    
+    return render_template('view_blog.html', blog=blog, rendered_content=sanitized_html)
+
+@app.route('/blogs/<int:blog_id>/edit', methods=['GET', 'POST'])
+def edit_blog(blog_id):
+    """Edit a markdown blog"""
+    blog = MarkdownBlog.query.get_or_404(blog_id)
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        
+        if not title or not content:
+            flash('Title and content are required!')
+            return render_template('edit_blog.html', blog=blog)
+        
+        blog.title = title
+        blog.content = content
+        blog.updated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        flash('Blog updated successfully!')
+        return redirect(url_for('view_blog', blog_id=blog.id))
+    
+    return render_template('edit_blog.html', blog=blog)
+
+@app.route('/blogs/<int:blog_id>/delete', methods=['POST'])
+def delete_blog(blog_id):
+    """Delete a markdown blog"""
+    blog = MarkdownBlog.query.get_or_404(blog_id)
+    
+    db.session.delete(blog)
+    db.session.commit()
+    
+    flash('Blog deleted successfully!')
+    return redirect(url_for('markdown_blogs'))
+
+@app.route('/blogs/<int:blog_id>/toggle-publish', methods=['POST'])
+def toggle_publish(blog_id):
+    """Toggle the published status of a blog"""
+    blog = MarkdownBlog.query.get_or_404(blog_id)
+    
+    blog.is_published = not blog.is_published
+    db.session.commit()
+    
+    status = 'published' if blog.is_published else 'unpublished'
+    flash(f'Blog {status} successfully!')
+    
+    # Redirect back to the referring page
+    referrer = request.referrer
+    if referrer and 'view_blog' in referrer:
+        return redirect(url_for('view_blog', blog_id=blog.id))
+    else:
+        return redirect(url_for('markdown_blogs'))
