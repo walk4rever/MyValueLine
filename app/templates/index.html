@@ -150,12 +150,6 @@ $(document).ready(function() {
                         const priceCell = row.find('.stock-price');
                         const currencySymbol = priceCell.data('currency');
                         priceCell.text(currencySymbol + stockData.current_price.toFixed(2));
-                        
-                        // Brief highlight effect
-                        priceCell.addClass('bg-light');
-                        setTimeout(() => {
-                            priceCell.removeClass('bg-light');
-                        }, 500);
                     }
                     
                     // Update change percent
@@ -169,12 +163,6 @@ $(document).ready(function() {
                             .text(sign + Math.abs(stockData.change_percent).toFixed(2) + '%')
                             .removeClass('text-success text-danger')
                             .addClass(changeClass);
-                            
-                        // Add highlight effect for changes
-                        changeCell.addClass('bg-light');
-                        setTimeout(() => {
-                            changeCell.removeClass('bg-light');
-                        }, 500);
                     }
                     
                     // Update ROI (Prospect Return)
@@ -187,12 +175,6 @@ $(document).ready(function() {
                             .text(stockData.prospect_return.toFixed(2) + '%')
                             .removeClass('text-success text-danger')
                             .addClass(roiClass);
-                            
-                        // Brief highlight effect
-                        roiCell.addClass('bg-light');
-                        setTimeout(() => {
-                            roiCell.removeClass('bg-light');
-                        }, 500);
                     }
                 }
             }
