@@ -24,9 +24,70 @@ class StockService:
             
             # Perform search based on the market
             if market == 'US':
-                # For US stocks, search on NASDAQ and NYSE
-                from yahoo_fin import stock_info
+                # Try direct symbol search first - handle common tickers
+                # Map for common company names to their symbols
+                common_companies = {
+                    'nvidia': 'NVDA',
+                    'apple': 'AAPL',
+                    'microsoft': 'MSFT',
+                    'amazon': 'AMZN',
+                    'google': 'GOOGL',
+                    'alphabet': 'GOOGL',
+                    'tesla': 'TSLA',
+                    'meta': 'META',
+                    'facebook': 'META',
+                    'netflix': 'NFLX',
+                    'berkshire': 'BRK-B',
+                    'berkshire hathaway': 'BRK-B',
+                    'jpmorgan': 'JPM',
+                    'j.p. morgan': 'JPM',
+                    'coca cola': 'KO',
+                    'coca-cola': 'KO',
+                    'disney': 'DIS',
+                    'walmart': 'WMT',
+                    'johnson & johnson': 'JNJ',
+                    'johnson and johnson': 'JNJ',
+                    'visa': 'V',
+                    'mastercard': 'MA',
+                    'intel': 'INTC',
+                    'amd': 'AMD',
+                    'qualcomm': 'QCOM',
+                    'ibm': 'IBM'
+                }
+                
+                # Check if name matches any common company
+                name_lower = name.lower()
+                for company_name, symbol in common_companies.items():
+                    if company_name in name_lower or name_lower in company_name:
+                        try:
+                            stock = yf.Ticker(symbol)
+                            stock_info = stock.info
+                            if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                                stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
+                                return [{
+                                    'symbol': symbol,
+                                    'name': stock_name
+                                }]
+                        except Exception as e:
+                            print(f"Error checking common company {company_name} ({symbol}): {e}")
+                            continue
+            
+                # Try direct ticker search as a fallback  
                 try:
+                    stock = yf.Ticker(name.upper())
+                    stock_info = stock.info
+                    if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                        stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
+                        return [{
+                            'symbol': name.upper(),
+                            'name': stock_name
+                        }]
+                except Exception as e:
+                    print(f"Error with direct ticker search for {name}: {e}")
+                    
+                # Try to load the ticker lists with yahoo_fin
+                try:
+                    import yahoo_fin.stock_info as stock_info
                     nasdaq_list = stock_info.tickers_nasdaq()
                     nyse_list = stock_info.tickers_other()
                     
@@ -44,34 +105,35 @@ class StockService:
                             
                         try:
                             stock = yf.Ticker(ticker)
-                            stock_name = stock.info.get('shortName', '') or stock.info.get('longName', '')
-                            if name_lower in stock_name.lower():
-                                potential_matches.append({
-                                    'symbol': ticker,
-                                    'name': stock_name
-                                })
-                        except:
+                            stock_info = stock.info
+                            if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                                stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
+                                if name_lower in stock_name.lower():
+                                    potential_matches.append({
+                                        'symbol': ticker,
+                                        'name': stock_name
+                                    })
+                        except Exception:
                             continue
                     
-                    # Return the matches
-                    return potential_matches
-                    
+                    if potential_matches:
+                        return potential_matches
                 except Exception as e:
-                    print(f"Error searching US stocks: {e}")
+                    print(f"Error with ticker list search: {e}")
                     
-                    # Fallback method using direct Yahoo Finance
-                    try:
-                        # Try a more direct search using yfinance's search capabilities
-                        # This is limited but can provide some results
-                        stock = yf.Ticker(name)
-                        stock_name = stock.info.get('shortName', None) or stock.info.get('longName', None)
-                        if stock_name:
-                            return [{
-                                'symbol': stock.ticker,
-                                'name': stock_name
-                            }]
-                    except:
-                        pass
+                # Last resort: Try the simple direct approach
+                try:
+                    print(f"Trying direct search for ticker '{name}'")
+                    stock = yf.Ticker(name)
+                    stock_info = stock.info
+                    if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                        stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
+                        return [{
+                            'symbol': name,
+                            'name': stock_name
+                        }]
+                except Exception as e:
+                    print(f"Error with final direct search: {e}")
                         
             # For other markets, provide a simplified search based on common patterns
             elif market == 'HK':
