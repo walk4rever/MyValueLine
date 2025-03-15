@@ -241,3 +241,25 @@ def get_all_stocks_data():
     db.session.commit()
     
     return jsonify(result)
+    
+@app.route('/stock_insights/<int:stock_id>', methods=['POST'])
+def stock_insights(stock_id):
+    """API endpoint for LLM chatbot responses about a stock"""
+    stock = Stock.query.get_or_404(stock_id)
+    
+    # Get user's message from the request
+    data = request.get_json()
+    if not data or 'message' not in data:
+        return jsonify({'error': 'No message provided'}), 400
+        
+    user_message = data['message']
+    
+    # Get insight from LLM via the service
+    response = StockService.get_stock_insights(stock.symbol, stock.market, user_message)
+    
+    # Return response as JSON
+    return jsonify({
+        'response': response,
+        'stock_symbol': stock.symbol,
+        'stock_name': stock.name
+    })

@@ -448,6 +448,35 @@
 </div>
 {% endif %}
 
+<!-- Chatbot Section -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">
+            <i class="fas fa-robot me-2"></i> Stock Insights Assistant
+        </h5>
+    </div>
+    <div class="card-body">
+        <div id="chat-container" class="mb-3" style="height: 300px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 5px; padding: 10px;">
+            <div class="chat-message assistant">
+                <div class="chat-bubble">
+                    <p>Hello! I'm your stock insights assistant for {{ stock.name }} ({{ stock.symbol }}). How can I help you analyze this stock?</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="user-message" class="form-control" placeholder="Ask about P/E ratio, dividends, balance sheet, etc...">
+            <button id="send-button" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+        </div>
+        
+        <div class="text-muted mt-2 small">
+            <p>Try asking about: dividend yield, P/E ratio, balance sheet, or general insights.</p>
+        </div>
+    </div>
+</div>
+
 <!-- Chart section removed for redesign -->
 {% endblock %}
 
@@ -593,6 +622,115 @@ $(document).ready(function() {
             return currencySymbol + value.toFixed(2);
         }
     }
+    
+    // Chatbot functionality
+    const chatContainer = document.getElementById('chat-container');
+    const userMessageInput = document.getElementById('user-message');
+    const sendButton = document.getElementById('send-button');
+    const stockId = {{ stock.id }};
+    
+    // Add typing indicator
+    function showTypingIndicator() {
+        const typingHtml = `
+            <div class="chat-message assistant" id="typing-indicator">
+                <div class="chat-bubble chat-typing">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        chatContainer.innerHTML += typingHtml;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Remove typing indicator
+    function removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    // Add a user message to the chat
+    function addUserMessage(message) {
+        const messageHtml = `
+            <div class="chat-message user">
+                <div class="chat-bubble">
+                    <p>${message}</p>
+                </div>
+            </div>
+        `;
+        chatContainer.innerHTML += messageHtml;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Add an assistant response to the chat
+    function addAssistantResponse(response) {
+        // Convert line breaks to <br> and handle bullet points
+        const formattedResponse = response.replace(/\n/g, '<br>').replace(/•/g, '&bull;');
+        
+        const messageHtml = `
+            <div class="chat-message assistant">
+                <div class="chat-bubble">
+                    <p>${formattedResponse}</p>
+                </div>
+            </div>
+        `;
+        chatContainer.innerHTML += messageHtml;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Process user input and get response
+    async function processUserInput() {
+        const message = userMessageInput.value.trim();
+        if (!message) return;
+        
+        // Clear input field
+        userMessageInput.value = '';
+        
+        // Add user message to chat
+        addUserMessage(message);
+        
+        // Show typing indicator
+        showTypingIndicator();
+        
+        try {
+            // Send message to backend API
+            const response = await fetch(`/stock_insights/${stockId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message }),
+            });
+            
+            const data = await response.json();
+            
+            // Remove typing indicator
+            removeTypingIndicator();
+            
+            if (response.ok) {
+                // Add assistant response
+                addAssistantResponse(data.response);
+            } else {
+                // Handle error
+                addAssistantResponse("Sorry, I encountered an error while processing your request.");
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            removeTypingIndicator();
+            addAssistantResponse("Sorry, there was an error connecting to the server. Please try again later.");
+        }
+    }
+    
+    // Event listeners
+    sendButton.addEventListener('click', processUserInput);
+    userMessageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            processUserInput();
+        }
+    });
 });
 </script>
 {% endblock %}

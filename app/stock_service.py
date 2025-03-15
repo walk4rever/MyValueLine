@@ -6,6 +6,7 @@ import plotly.graph_objs as go
 import json
 from decimal import Decimal
 import locale
+import os
 
 class StockService:
     @staticmethod
@@ -416,3 +417,97 @@ class StockService:
             import traceback
             traceback.print_exc()
             return None
+            
+    @staticmethod
+    def get_stock_insights(symbol, market, user_message):
+        """
+        Generate insights about a stock using an LLM
+        
+        Args:
+            symbol (str): Stock symbol
+            market (str): Market (US, HK, CN)
+            user_message (str): User's message to the chatbot
+            
+        Returns:
+            str: Response from the LLM
+        """
+        try:
+            # Get stock data to provide context to the LLM
+            stock_data = StockService.get_stock_data(symbol, market)
+            balance_sheet = StockService.get_balance_sheet_data(symbol, market)
+            
+            if not stock_data:
+                return "Sorry, I couldn't retrieve information about this stock."
+            
+            # Prepare context for the LLM from the stock data
+            context = {
+                "symbol": symbol,
+                "name": stock_data.get('name', symbol),
+                "market": market,
+                "current_price": stock_data.get('current_price'),
+                "market_cap": stock_data.get('market_cap'),
+                "pe_ratio": stock_data.get('pe_ratio'),
+                "eps": stock_data.get('eps'),
+                "dividend_yield": stock_data.get('dividend_yield'),
+                "prospect_return": stock_data.get('prospect_return'),
+                "roe": stock_data.get('roe')
+            }
+            
+            # Add balance sheet data if available
+            if balance_sheet:
+                context["balance_sheet"] = {
+                    "total_assets": balance_sheet.get('total_assets'),
+                    "total_liabilities": balance_sheet.get('total_liabilities'),
+                    "equity": balance_sheet.get('equity'),
+                    "debt": balance_sheet.get('debt'),
+                    "current_ratio": balance_sheet.get('current_ratio'),
+                    "debt_equity_ratio": balance_sheet.get('debt_equity_ratio')
+                }
+            
+            # URL for an external LLM API, could be OpenAI, Anthropic, etc.
+            # For demonstration, we'll return a mock response
+            # In production, you'd make an API call here
+            
+            # Mock response for demonstration
+            if "dividend" in user_message.lower():
+                if stock_data.get('dividend_yield'):
+                    yield_value = f"{stock_data.get('dividend_yield', 0) * 100:.2f}%"
+                    return f"The current dividend yield for {stock_data.get('name')} is {yield_value}."
+                else:
+                    return f"{stock_data.get('name')} doesn't currently pay dividends."
+            
+            elif "pe ratio" in user_message.lower() or "p/e" in user_message.lower():
+                if stock_data.get('pe_ratio'):
+                    return f"The P/E ratio for {stock_data.get('name')} is {stock_data.get('pe_ratio'):.2f}."
+                else:
+                    return f"I couldn't find P/E ratio data for {stock_data.get('name')}."
+            
+            elif "competitors" in user_message.lower():
+                # This would normally use industry data to provide competitors
+                return f"As a finance assistant, I could analyze competitors of {stock_data.get('name')}, but that would require more comprehensive industry data."
+            
+            elif "balance sheet" in user_message.lower():
+                if balance_sheet:
+                    return (
+                        f"Based on the latest balance sheet for {stock_data.get('name')}:\n"
+                        f"• Total Assets: ${balance_sheet.get('total_assets')/1e9:.2f}B\n"
+                        f"• Total Liabilities: ${balance_sheet.get('total_liabilities')/1e9:.2f}B\n"
+                        f"• Equity: ${balance_sheet.get('equity')/1e9:.2f}B\n"
+                        f"• Debt to Equity Ratio: {balance_sheet.get('debt_equity_ratio'):.2f}"
+                    )
+                else:
+                    return f"I don't have balance sheet data available for {stock_data.get('name')}."
+            
+            else:
+                # General response for other queries
+                return (
+                    f"I can provide insights about {stock_data.get('name')} ({symbol}).\n\n"
+                    f"The current stock price is ${stock_data.get('current_price', 'N/A'):.2f} with a market cap of ${stock_data.get('market_cap', 0)/1e9:.2f}B.\n\n"
+                    f"You can ask me about the company's financials, performance, valuation, or specific metrics like P/E ratio, dividend yield, etc."
+                )
+                
+        except Exception as e:
+            print(f"Error in get_stock_insights: {e}")
+            import traceback
+            traceback.print_exc()
+            return "Sorry, I encountered an error while processing your request."
