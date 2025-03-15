@@ -87,6 +87,34 @@ body {
     padding: 0.4rem;
 }
 
+/* Market-specific backgrounds - with !important to override Bootstrap */
+.market-US {
+    background-color: #d6eaff !important; /* Light blue */
+    border-left: 4px solid #4d94ff !important;
+}
+
+.market-HK {
+    background-color: #ffe6eb !important; /* Light pink */
+    border-left: 4px solid #ff809f !important;
+}
+
+.market-CN {
+    background-color: #e6ffe6 !important; /* Light green */
+    border-left: 4px solid #66cc66 !important;
+}
+
+.market-US:hover {
+    background-color: #c4e0ff !important;
+}
+
+.market-HK:hover {
+    background-color: #ffd6e0 !important;
+}
+
+.market-CN:hover {
+    background-color: #d6ffd6 !important;
+}
+
 /* Form controls */
 .form-control, .btn {
     padding: 0.375rem 0.5rem;
