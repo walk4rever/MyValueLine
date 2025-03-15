@@ -76,7 +76,11 @@ class StockService:
                 try:
                     stock = yf.Ticker(name.upper())
                     stock_info = stock.info
-                    if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                    # Check if stock_info is None or empty (which can happen with 404 errors)
+                    if not stock_info:
+                        print(f"No data found for ticker {name.upper()} - API returned empty response")
+                        # Continue to other search methods instead of failing
+                    elif ('shortName' in stock_info or 'longName' in stock_info):
                         stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
                         return [{
                             'symbol': name.upper(),
@@ -84,6 +88,7 @@ class StockService:
                         }]
                 except Exception as e:
                     print(f"Error with direct ticker search for {name}: {e}")
+                    # Continue to other search methods instead of failing
                     
                 # Try to load the ticker lists with yahoo_fin
                 try:
@@ -126,7 +131,15 @@ class StockService:
                     print(f"Trying direct search for ticker '{name}'")
                     stock = yf.Ticker(name)
                     stock_info = stock.info
-                    if stock_info and ('shortName' in stock_info or 'longName' in stock_info):
+                    # Check if stock_info is None or empty (which can happen with 404 errors)
+                    if not stock_info:
+                        print(f"No data found for ticker {name} - API returned empty response")
+                        # Return helpful message instead of empty results
+                        return [{
+                            'symbol': name,
+                            'name': "No data found for this ticker. Try a different search term."
+                        }]
+                    elif ('shortName' in stock_info or 'longName' in stock_info):
                         stock_name = stock_info.get('shortName', '') or stock_info.get('longName', '')
                         return [{
                             'symbol': name,
@@ -134,6 +147,11 @@ class StockService:
                         }]
                 except Exception as e:
                     print(f"Error with final direct search: {e}")
+                    # Return helpful message instead of empty results
+                    return [{
+                        'symbol': name,
+                        'name': "Error retrieving data. Try a different search term."
+                    }]
                         
             # For other markets, provide a simplified search based on common patterns
             elif market == 'HK':
@@ -173,6 +191,11 @@ class StockService:
             stock = yf.Ticker(query_symbol)
             info = stock.info
             
+            # Check if info is None (which can happen with 404 errors)
+            if not info:
+                print(f"No data found for symbol {query_symbol} - API returned empty response")
+                return None
+                
             # Get earnings per share (EPS) from trailing 12 months
             eps = info.get('trailingEps')
             
